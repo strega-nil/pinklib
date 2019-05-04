@@ -197,6 +197,12 @@ using ReplaceDefaultAllocator =
 
 struct AllocatorArgument {};
 
+namespace prelude {
+  using ::pink::AllocatorArgument;
+  using ::pink::PolymorphicAllocator;
+  using ::pink::SystemAllocator;
+} // namespace prelude
+
 } // namespace pink
 
 #endif // _PINK_ALLOCATOR_HPP

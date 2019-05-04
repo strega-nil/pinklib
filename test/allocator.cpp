@@ -3,8 +3,10 @@
 
 #include <iostream>
 
+using namespace pink::prelude;
+
 // invalidly implemented, but good enough to test allocators
-struct MyMR : pink::MemoryResource {
+struct MyMR final : pink::MemoryResource {
   void* do_allocate(pink::Int size, pink::Int) const noexcept override {
     return ::operator new(size);
   }
@@ -14,26 +16,30 @@ const MyMR my_mr;
 
 // mostly exists to make sure tests work
 int main() {
-  auto b = pink::Box<pink::Box<int>, pink::PolymorphicAllocator>(
-    pink::AllocatorArgument(), pink::PolymorphicAllocator(&my_mr), 0);
+  auto b = Box<Box<int>, PolymorphicAllocator>(
+    AllocatorArgument(), PolymorphicAllocator(&my_mr), 0);
 
   static_assert(pink::same_type<
                 decltype(b)::ValueType,
-                pink::Box<int, pink::PolymorphicAllocator>>);
+                Box<int, PolymorphicAllocator>>);
 
-  auto b2 = pink::Box<
-    pink::Box<int, pink::SystemAllocator>,
-    pink::PolymorphicAllocator
-  >(
-    pink::AllocatorArgument(), pink::PolymorphicAllocator(&my_mr), 0);
+  auto b2 = pink::
+    Box<pink::Box<int, SystemAllocator>, pink::PolymorphicAllocator>(
+      AllocatorArgument(), PolymorphicAllocator(&my_mr), 0);
 
-  static_assert(pink::same_type<
-                decltype(b2)::ValueType,
-                pink::Box<int, pink::SystemAllocator>>);
+  static_assert(
+    pink::
+      same_type<decltype(b2)::ValueType, Box<int, SystemAllocator>>);
 
-  if (b->allocator() == pink::PolymorphicAllocator(&my_mr)) {
-    return 0;
-  } else {
+  if (b->allocator() != pink::PolymorphicAllocator(&my_mr)) {
+    return 1;
+  }
+
+  if (**b != 0) {
+    return 1;
+  }
+
+  if (**b2 != 0) {
     return 1;
   }
 }

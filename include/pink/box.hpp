@@ -61,10 +61,10 @@ private:
     __pointer = nullptr;
   }
 
-  template <class _T2, class _A2>
-  constexpr bool __equal_alloc(Box<_T2, _A2> const& __other) const {
+  template <class _A2>
+  constexpr bool __equal_alloc(_A2 const& __other) const {
     if constexpr (equality_comparable<_Alloc, _A2>) {
-      return allocator == __other.allocator();
+      return allocator() == __other;
     } else {
       return false;
     }
@@ -76,7 +76,8 @@ private:
   template <class _T2, class _A2>
   constexpr Box& __move_assign(Box<_T2, _A2>& __other) noexcept(
     noexcept(declval<ValueType&>() = declval<_VTOf<_T2, _A2>&&>())
-    and noexcept(__construct_ptr(declval<_VTOf<_T2, _A2>&&>()))) {
+    and noexcept(declval<Box&>().__construct_ptr(
+          declval<_VTOf<_T2, _A2>&&>()))) {
     using _VT2 = _VTOf<_T2, _A2>;
 
     if (not __pointer) {
@@ -103,7 +104,8 @@ private:
   template <class _T2, class _A2>
   constexpr Box& __copy_assign(Box<_T2, _A2> const& __other) noexcept(
     noexcept(declval<ValueType&>() = declval<_VTOf<_T2, _A2> const&>())
-    and noexcept(__construct_ptr(declval<_VTOf<_T2, _A2> const&>()))) {
+    and noexcept(declval<Box&>().__construct_ptr(
+          declval<_VTOf<_T2, _A2> const&>()))) {
     if (not __pointer and __other.__pointer) {
       __construct_ptr(*__other);
     } else if (not __other.__pointer) {
@@ -142,7 +144,7 @@ public:
     if constexpr (same_type<ValueType, _VT2>) {
       if constexpr (always_equal<_Alloc, _A2>) {
         __pointer = exchange(__other.__pointer, nullptr);
-      } else if (__alloc_equal(__other)) {
+      } else if (__equal_alloc(__other.allocator())) {
         __pointer = exchange(__other.__pointer, nullptr);
       } else if (__other.__pointer) {
         __construct_ptr(static_cast<_VT2&&>(*__other.__pointer));
@@ -223,17 +225,28 @@ public:
 
   // assignment operators
   template <class _T2, class _A2>
-  constexpr auto operator=(Box<_T2, _A2>&& __other)
-    _PINK_FORWARDING_FUNC(__move_assign(__other))
-
-  constexpr auto operator=(Box&& __other)
-    _PINK_FORWARDING_FUNC(__move_assign(__other))
+  constexpr Box& operator=(Box<_T2, _A2>&& __other)
+    noexcept(noexcept(declval<Box&>().__move_assign(__other)))
+  {
+    return __move_assign(__other);
+  }
+  constexpr Box& operator=(Box&& __other)
+    noexcept(noexcept(declval<Box&>().__move_assign(__other)))
+  {
+    return __move_assign(__other);
+  }
 
   template <class _T2, class _A2>
-  constexpr auto operator=(Box<_T2, _A2> const& __other)
-    _PINK_FORWARDING_FUNC(__copy_assign(__other))
-  constexpr auto operator=(Box const& __other)
-    _PINK_FORWARDING_FUNC(__copy_assign(__other))
+  constexpr Box& operator=(Box<_T2, _A2> const& __other)
+    noexcept(noexcept(declval<Box&>().__copy_assign(__other)))
+  {
+    return __copy_assign(__other);
+  }
+  constexpr Box& operator=(Box const& __other)
+    noexcept(noexcept(declval<Box&>().__copy_assign(__other)))
+  {
+    return __copy_assign(__other);
+  }
 
   // destructor
   ~Box() {
@@ -371,6 +384,10 @@ constexpr bool operator>=(
   } else {
     return bool(__lhs) >= bool(__rhs);
   }
+}
+
+namespace prelude {
+  using ::pink::Box;
 }
 
 } // namespace pink

@@ -7,6 +7,10 @@ namespace pink {
 
 using Int = decltype("" - "");
 
+namespace prelude {
+  using ::pink::Int;
+}
+
 namespace __impl {
   template <class _T1>
   constexpr void swap(_T1& _Lhs, _T1& _Rhs) noexcept {
