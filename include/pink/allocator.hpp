@@ -145,28 +145,34 @@ namespace __impl {
       typename _Ty::template ReplaceAllocator<DefaultAllocator>,
       typename _Ty::Allocator>> : TrueType {};
 
-  template <class _Ty, class _Void = void>
+  template <class _Ty, bool __alloc_aware = AllocatorAware<_Ty>::value>
   struct AllocatorOf {
     using Type = void;
   };
 
   template <class _Ty>
-  struct AllocatorOf<_Ty, Sfinae<typename _Ty::Allocator>> {
+  struct AllocatorOf<_Ty, true> {
     using Type = typename _Ty::Allocator;
   };
 
   template <
     class _Ty,
-    class _OldAlloc = typename AllocatorOf<_Ty>::Type,
-    bool __alloc_aware = AllocatorAware<_Ty>::value
-  >
+    class _OldAlloc = typename AllocatorOf<_Ty>::Type>
+  struct UsesDefaultAllocator : FalseType {};
+
+  template <class _Ty>
+  struct UsesDefaultAllocator<_Ty, DefaultAllocator> : TrueType {};
+
+  template <
+    class _Ty,
+    bool __uses_default_alloc = UsesDefaultAllocator<_Ty>::value>
   struct ReplaceDefaultAllocator {
     template <class>
     using Type = _Ty;
   };
 
   template <class _Ty>
-  struct ReplaceDefaultAllocator<_Ty, DefaultAllocator, true> {
+  struct ReplaceDefaultAllocator<_Ty, true> {
     template <class _NewAlloc>
     using Type = typename _Ty::template ReplaceAllocator<_NewAlloc>;
   };
@@ -174,8 +180,12 @@ namespace __impl {
 } // namespace __impl
 
 template <class _Ty>
-constexpr static bool AllocatorAware =
+constexpr static bool allocator_aware =
   __impl::AllocatorAware<_Ty>::value;
+
+template <class _Ty>
+constexpr static bool uses_default_allocator =
+  __impl::UsesDefaultAllocator<_Ty>::value;
 
 template <class _Ty>
 using AllocatorOf = typename __impl::AllocatorOf<_Ty>::Type;

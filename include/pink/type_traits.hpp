@@ -84,8 +84,7 @@ constexpr static bool equality_comparable =
   __impl::EqualityComparable<_T1, _T2>::value;
 
 template <class _T1, class _T2>
-constexpr static bool same_type =
-  __impl::SameType<_T1, _T2>::value;
+constexpr static bool same_type = __impl::SameType<_T1, _T2>::value;
 
 template <class _T1, class _T2 = _T1>
 struct TraitAlwaysEqual : FalseType {};

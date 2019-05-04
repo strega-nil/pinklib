@@ -23,7 +23,25 @@ private:
     noexcept(::pink::construct<ValueType>(declval<_Ts&&>()...))) {
     __pointer = static_cast<ValueType*>(
       _Alloc::allocate(sizeof(ValueType), alignof(ValueType)));
-    if constexpr (noexcept(ValueType(declval<_Ts&&>()...))) {
+    if constexpr (uses_default_allocator<_Ty>) {
+      constexpr bool __noexcept = noexcept(ValueType(
+        AllocatorArgument(), allocator(), declval<_Ts&&>()...));
+      if constexpr (__noexcept) {
+        new (__pointer) ValueType(
+          AllocatorArgument(), allocator(), static_cast<_Ts&&>(_Vs)...);
+      } else {
+        try {
+          new (__pointer) ValueType(
+            AllocatorArgument(),
+            allocator(),
+            static_cast<_Ts&&>(_Vs)...);
+        } catch (...) {
+          _Alloc::free(
+            __pointer, sizeof(ValueType), alignof(ValueType));
+          throw;
+        }
+      }
+    } else if constexpr (noexcept(ValueType(declval<_Ts&&>()...))) {
       new (__pointer)
         ValueType(construct<ValueType>(static_cast<_Ts&&>(_Vs)...));
     } else {
@@ -44,6 +62,15 @@ private:
   }
 
   template <class _T2, class _A2>
+  constexpr bool __equal_alloc(Box<_T2, _A2> const& __other) const {
+    if constexpr (equality_comparable<_Alloc, _A2>) {
+      return allocator == __other.allocator();
+    } else {
+      return false;
+    }
+  }
+
+  template <class _T2, class _A2>
   using _VTOf = typename Box<_T2, _A2>::ValueType;
 
   template <class _T2, class _A2>
@@ -53,10 +80,10 @@ private:
     using _VT2 = _VTOf<_T2, _A2>;
 
     if (not __pointer) {
-      if constexpr (always_equal<_Alloc>) {
-        __pointer = exchange(__other.__pointer, nullptr);
-      } else if constexpr (equality_comparable<_Alloc, _A2>) {
-        if (allocator() == __other.allocator()) {
+      if constexpr (same_type<ValueType, _VT2>) {
+        if constexpr (always_equal<_Alloc, _A2>) {
+          __pointer = exchange(__other.__pointer, nullptr);
+        } else if (__equal_alloc(__other.allocator())) {
           __pointer = exchange(__other.__pointer, nullptr);
         } else if (__other.__pointer) {
           __construct_ptr(static_cast<_VT2&&>(*__other.__pointer));
@@ -115,12 +142,8 @@ public:
     if constexpr (same_type<ValueType, _VT2>) {
       if constexpr (always_equal<_Alloc, _A2>) {
         __pointer = exchange(__other.__pointer, nullptr);
-      } else if constexpr (equality_comparable<_Alloc, _A2>) {
-        if (allocator() == __other.allocator()) {
-          __pointer = exchange(__other.__pointer, nullptr);
-        } else if (__other.__pointer) {
-          __construct_ptr(static_cast<_VT2&&>(*__other.__pointer));
-        }
+      } else if (__alloc_equal(__other)) {
+        __pointer = exchange(__other.__pointer, nullptr);
       } else if (__other.__pointer) {
         __construct_ptr(static_cast<_VT2&&>(*__other.__pointer));
       }
