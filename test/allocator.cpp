@@ -21,6 +21,16 @@ int main() {
                 decltype(b)::ValueType,
                 pink::Box<int, pink::PolymorphicAllocator>>);
 
+  auto b2 = pink::Box<
+    pink::Box<int, pink::SystemAllocator>,
+    pink::PolymorphicAllocator
+  >(
+    pink::AllocatorArgument(), pink::PolymorphicAllocator(&my_mr), 0);
+
+  static_assert(pink::same_type<
+                decltype(b2)::ValueType,
+                pink::Box<int, pink::SystemAllocator>>);
+
   if (b->allocator() == pink::PolymorphicAllocator(&my_mr)) {
     return 0;
   } else {
